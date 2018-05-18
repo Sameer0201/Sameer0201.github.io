@@ -1,0 +1,366 @@
+---
+title: 'Final Project: Popular Music vs Critically Acclaimed'
+author: "Sameer Gupta"
+date: "5/12/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(ggplot2)
+library(formattable)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Music 
+
+For the longest time, the question of how good really is mainstream music has been on my mind. Is the most viewed pop song on Youtube in 2017, Despacito, more than a one hit wonder? How well does it stand aganist critically acclaimed music? Is there any disparities in actually critically acclaimed music and over-produced mainstream music? 
+
+Pop mainstream music has been accused of being repetitive and unimaginative but always makes it to the top of every chart and are commerically very successful. It is often over-produced, auto-tuned and the lyrics are generally written by a ghost writer! It's a shocker that Drake never himself wrote any of his songs but has many grammies to his name. This doesn't sound right... 
+
+But that's the case with most pop music with some exceptions. Martin Sandberg, a swedish songwriter, record producer and singer co-wrote and co-produced most of the last two decades of pop music. You probably recognize his work from, Katy Perry's hit song "I Kissed a Girl", or maybe you recognise his other hit songs, Tay-tay's best seller "Blank Space" or maybe the Weekend's "Can't Feel My Face". He has been credited in having third most number one singles on top charts after Paul and John respectively from the beatles. Shocker, isn't it? There is no doubt commerical pop music has won the hearts of Americans and people worldwide. But how well do they sound to a music critic. Does music sell because of who sings it or because it is qualitatively good. Let's find out,
+
+## The Data
+
+I chose 2 different sources of data obtained from kaggle. I will talk about them, one by one and check their authenticity. 
+
+# Spotify's Top Tracks of 2017
+
+Spotify is a swedish music streaming service which has over 170 million users worldwide and it has access to 35 million songs. It is the most widely used streaming service in the US. I can see it being the most credible analysis of who's listening to what and how much are they listening to it. End of each year spotify releases their top songs of the year. These songs are mostly the top hits of the year, songs which have been played the most worldwide throughout the year. We also need to understand that these two datasets I chose tell us how many times people streamed a song. The top charts don't conclude that the song is excellent or is of high quality. It merely tells us that a lot of people heard this song, repeatedly. It could just be a well marketed song, but lets find out by taking a look at this data,
+
+We will import our files and another column in the spotify databse to represent the ranking of the song. The spotify dataset is a bit incomplete on what was the actual position of song through the year on the  charts, so we will import another dataset to get more information on our top 100 from spotify. 
+
+You can learn more about spotify's data collection and processing at https://insights.spotify.com/us/. 
+
+```{r}
+spotify <- read.csv("/Users/SameerGupta/Desktop/CMSC320/Final/featuresdf.csv")
+spotify_daily <- read.csv("/Users/SameerGupta/Desktop/CMSC320/Final/data.csv")
+
+spotify$rank = seq(1,nrow(spotify)) 
+
+head(spotify)
+```
+
+```{r}
+spotify_daily$Date <- as.Date(spotify_daily$Date, format="%Y-%m-%d")
+
+head(spotify_daily)
+```
+
+We have the top 100 songs of the year 2017. Lets see the distribution of artists and other features from this dataset. It displays more information about each song, like their characteristics like danceability, liveliness, and more. 
+
+Lets see first who are top artists are and count their occurrences in the top 100 chart.
+
+```{r}
+spotify %>%
+  group_by(artists) %>%
+  summarise(apperance = n()) %>%
+  arrange(desc(apperance)) %>%
+  filter(apperance > 1) %>%
+  ggplot(aes(x=reorder(artists, apperance), y=apperance)) + geom_bar(stat = "identity",  colour = "black", width = 0.6) + coord_flip() + labs(title= "Top Artists by occurrence",
+                      y="Number of Occurrences", x = "Artist")
+```
+
+2017 was a very sucessful year for Ed Sheeran who released his next studio album "Divide" and also for chainsmokers' debut studio album "Memories...Do Not Open" both of which landed 4 top hits in spotify's top 100. This is followed by Martin Garrix and Drake with both 3 songs, and a bunch of other artists with 2 hit songs in 2017, which notabaly includes one of favorite artist of 2017, Kendrick Lamar who also coincidently landed in Obama's favorite songs of 2017(Fun Fact! Here is link if you want to explore: https://www.rollingstone.com/music/news/obama-names-kendrick-lamar-jay-z-u2-to-2017-songs-list-w514834). Also there are other famous artists in this list like Maroon 5, Calvin Harris, Imagine Dragon and DJ Khalid(I got all the keys). 
+
+Below is a dataset of all artists which appeared in the top charts, we will use this later. 
+```{r}
+artists <- spotify %>%
+  group_by(artists) %>%
+  summarise(apperance = n())
+head(artists)
+```
+
+Lets evaluate other characteristics of our top class of music from 2017. Lets see how many total streams did each artist got in total for all their top songs combined. Also for our analysis lets focus only on the US for now. 
+
+```{r}
+spotify_daily %>%
+  filter(Region == "us") %>%
+  group_by(Artist) %>%
+  summarise(total_streams = sum(Streams)) %>%
+  arrange(desc(total_streams)) %>%
+  slice(1:20) %>%
+  ggplot(mapping=aes(y=reorder(Artist, total_streams),x=total_streams)) + geom_point(colour = 'red') + labs(title= "Total streams for artist",
+                      y="Artist", x = "Number of Streams")
+```
+
+Very interesting. Let's plot the top songs by their number of streams now. 
+
+```{r}
+spotify_daily %>%
+  filter(Region == "us") %>%
+  group_by(Track.Name) %>%
+  summarize(total_streams = sum(Streams)) %>%
+  arrange(desc(total_streams)) %>%
+  slice(1:20) %>%
+  ggplot(mapping=aes(y=reorder(Track.Name, total_streams),x=total_streams)) + geom_point() + labs(title= "Total streams by song",
+                      y="Songs", x = "Number of Streams")
+```
+
+The above two graphs depict very similar results but still very intersting. Drake was the most streamed artist in 2017 but none of his songs made it in the top 20 most streamed songs. This could mean that despite not launching an amazing, chart topping song, he still made it to the top with a overall quality album, "More Life" with the hit song, "PassionFruit" making him the most listened to on spotify. This is followed by the legend himself Kendrick Lamar, who dropped the hottest song/album 'HUMBLE' which is the most streamed song of 2017 and also kendrick is the second most overall streamed artist of 2017, which proves he was overall a high achiving artist in 2017. Ed Sheeran, Post Malone, Lil Uzi all performed as axpected with high streaming individual songs and also also overall high streamers. It's not suprising to see Logic and Luis Fonsi(Des-pa-cito), both with high streaming singles but overall they are on the lower end of the spectrum when it comes to overall performance. 
+
+Let's see if we can learn more about the achievements of two hip-hop artists in one of their best years in the industry. 
+
+# Kendrick VS Drake
+
+Lets see how the two top artists performed aganist each other. Kendrick with his third studio album, 'DAMN' and Drake with his mixtape, "More Life". Lets compare how the top songs for both albums placed in the top 100 in the daily charts for spotify. We will summarize this by checking how many times songs from both albums placed in the top 100 chart. 
+
+We will first extract the number of times a song appeared in the top 100 and keep a list of songs for both the artists. 
+
+```{r}
+drake <- spotify_daily %>%
+  filter(Region == "us", Artist == "Drake", Position <= 100) %>%
+  group_by(Track.Name) %>%
+  summarise(daily_hits = n()) %>%
+  filter(daily_hits >= 15) %>%
+  slice(1:15) %>%
+  arrange(desc(daily_hits))
+  
+    
+kendrick <- spotify_daily %>%
+  filter(Region == "us", Artist == "Kendrick Lamar", Position <= 100) %>%
+  group_by(Track.Name) %>%
+  summarise(daily_hits = n()) %>%
+  filter(daily_hits >= 15) %>%
+  arrange(desc(daily_hits))
+```
+
+```{r}
+head(drake)
+```
+
+```{r}
+head(kendrick)
+```
+
+This shows that both albums were at average equal to each other. But lets dig a bit deeper, lets see how the actual position for songs from both albums moved around in the charts. 
+
+We will now plot the top 15 songs for both artists with their position on the top charts with the corresponding date. 
+
+```{r}
+temp <- drake %>% collect %>% .[["Track.Name"]]
+
+spotify_daily %>%
+  filter(Region == "us", Artist == "Drake", Position <= 100) %>%
+  filter(Track.Name %in% temp) %>%
+  ggplot(aes(x = Date, y = Position, col = Track.Name)) + 
+    geom_point(size = 2) +
+    scale_y_reverse(breaks = seq(0,100,10)) +
+    scale_x_date() +
+    labs(title= "Drake on top 100", y="Rank", x = "Date") + 
+    theme(plot.title = element_text(size = 14, face = "bold"))
+```
+```{r}
+temp <- kendrick %>% collect %>% .[["Track.Name"]]
+
+spotify_daily %>%
+  filter(Region == "us", Artist == "Kendrick Lamar", Position <= 100) %>%
+  filter(Track.Name %in% temp) %>%
+  ggplot(aes(x = Date, y = Position, col = Track.Name)) + 
+    geom_point(size = 2) +
+    scale_y_reverse(breaks = seq(0,100,10)) +
+    scale_x_date() +
+    labs(title= "Kendrick on top 100", y="Rank", x = "Date") + 
+    theme(plot.title = element_text(size = 14, face = "bold")) + 
+    guides(fill=guide_legend(title="New Legend Title"))
+```
+
+Both albums started off on the top of the charts. That might be because both of them were much awaited releases and the hype pushed them up because everyone wanted to listen to them. For both artists there is a sharp fall in popularity for majority for their tracks in the first few weeks after release. Songs like 'Gyalchester' for Drake and 'XXX' for Kendrick fell sharp down. But looking at the popular songs for both albums, things get interesting. For Drake's 'More Life', there is a slow decline and the album is out of the charts in the first 4 months with no coming back. But for Kendrick's 'DAMN', the graph looks much better. The song 'HUMBLE' stayed on the top for over 8 months with also an increase in rating towards the end. The song 'LOVE' even makes a major comeback towards the end of the year(Kendrick came out with a music video for the song around the same time)! The overall trend of 'DAMN' looks much better than 'More Life'.
+
+# Anthony Fantano
+
+Anthony Fantano, self-proclaimed as "The Internet's Busiest Music Nerd", is a music journalist who presents his reviews on YouTube and his website called theneedledrop.com. He has over 1.41 million subscribers and has over 338 million total views on his videos. He scores each album out of 10 points and also lists his favorite and worst songs from the album. And luckily, he has his music review database on Kaggle! Let's see what he has to say,
+
+The frist thing I see is that there are a few things which are missing but overall this is an extensive database. He has 223 reviews alone for the year of 2017. Lets Deal with the missing values first. We will add a column which will represent if the score is missing or not. 
+
+You can check out his website here at:http://www.theneedledrop.com  
+and his youtube channel at: https://www.youtube.com/user/theneedledrop
+
+```{r}
+theNeedleDrop <- read.csv("/Users/SameerGupta/Desktop/CMSC320/Final/anthony-fantano-reviews/fantano_reviews.csv")
+
+theNeedleDrop$review_date <- as.Date(theNeedleDrop$review_date, format="%Y-%m-%d")
+
+theNeedleDrop <- theNeedleDrop %>%
+  mutate(score_missing = is.na(score))
+
+theNeedleDrop %>%
+  filter(format(review_date,"%Y") == 2017) %>%
+  head()
+```
+
+Let's plot the scores aganist time. 
+
+```{r}
+theNeedleDrop %>%
+  subset(score_missing == FALSE) %>%
+  ggplot(mapping=aes(x=review_date, y=score)) + geom_point() + labs(title= "Scores over Year", y="Score", x = "Year")
+```
+
+Hmm, this doesn't tell us much. Lets group by year, and plot a boxplot of the same data. 
+
+```{r}
+theNeedleDrop$yearID <- format(as.Date(theNeedleDrop$review_date, format="%Y-%m-%d"),"%Y")
+
+theNeedleDrop %>%
+  subset(score_missing == FALSE) %>%
+  ggplot(mapping=aes(group = yearID, x = yearID, y = score)) + geom_boxplot() + labs(title= "Boxplot: Scores over Year", y="Score", x = "Year") + ylim(2,10)
+```
+
+It's very intersting to see the average score for most new albums has been around ~7 consistently over the years for The Needle Drop. Also the average distribution of rating has been very consistent in the past few years. Lets now see how well our top 100 artists and their new albums/songs performed with the Needle Drop's scores. To get an overall view let's use the spotify daily database. We'll narrow our source by looking at all artists who were on the top 100 for over 7 days(1 week) in the year of 2017. New music is always released on Friday since 2015, so a week long estimation is pretty good as that album would be new for atleast that week.
+
+```{r}
+top_artists <- spotify_daily %>%
+  group_by(Artist) %>%
+  summarise(daily_hits = n()) %>%
+  filter(daily_hits >= 7) %>%
+  collect %>% .[["Artist"]]
+
+top_100_review <- theNeedleDrop %>%
+  filter(artist %in% top_artists)
+
+top_100_review %>%
+  subset(score_missing == FALSE) %>%
+  ggplot(mapping=aes(group = yearID, x = yearID, y = score)) + geom_boxplot() + labs(title= "Scores over Year for popular artists", y="Score", x = "Year")
+```
+
+The average of our top 100 drops from a total average of ~7 to a ~6. It is a major drop but not very conclusive. Lets look at all the artists which performed from above the average, and plot them with their scores. 
+
+```{r}
+top_artists <- spotify %>%
+  group_by(artists) %>%
+  collect %>% .[["artists"]]
+
+top_100_review <- theNeedleDrop %>%
+  filter(artist %in% top_artists)
+
+top_100_review %>%
+  subset(score_missing == FALSE) %>%
+  group_by(artist) %>%
+  filter(yearID == 2017) %>%
+  ggplot(aes(x=reorder(artist, score), y=score, fill = title)) + geom_bar(stat = "identity",  colour = "black", width = 0.6) + coord_flip() + labs(title= "Top Artists by Score",
+                      y="Score", x = "Artist") 
+```
+
+Except for Migos and Kendrick Lamar, a much of popular artists are below the average for theNeedleDrop(average is 7). Kendrick's "DAMN" and Migo's "Culture" both are also only one average for last year in ratings. It is very interesting to see that Ed Sheeran's album "Divide" despite popular fame did poorly in theNeedleDrop's review. Same with Taylor Swift's "Reputation". What about the artists who didn't make the top 100 but had great reviews from the NeedleDrop. 
+
+Let's look at the best of the reviewed, none of which made the top 100, except for Rina Sawayama's album in JP for a day at position 95. These are probably some great recommendations to listen to !
+
+```{r}
+top_needeDrop <- theNeedleDrop %>%
+  subset(score_missing == FALSE) %>%
+  group_by(artist) %>%
+  filter(yearID == 2017, score >= 9) 
+
+sample <- top_needeDrop %>%
+  collect %>% .[["artist"]]
+
+spotify_needle <- spotify_daily %>%
+  group_by(Artist) %>%
+  filter(Artist %in% sample) %>%
+  filter(Position <= 100)
+
+left_join(top_needeDrop, spotify_needle, by = c("artist"="Artist"))
+
+```
+
+Are there any artists who launched critically acclaimed albums last year but didn't get much fame ?
+
+Well, yes! There are a few, and I have picked my top 4. Out of these 4, 4:44 is not on spotify, thats probably why there is no data on it. Melodrama performed well but not as good as compared to the top 100. It had only 2 songs which made to the top 100. The rest other artists are missing from the top 100 dataset. 
+
+```{r}
+top_4 <- c(1527, 1540, 1547, 1587)
+
+theNeedleDrop %>%
+  filter(X %in% top_4) %>%
+  head()
+
+sample <- theNeedleDrop %>%
+  filter(X %in% top_4) %>%
+  collect %>% .[["artist"]]
+
+spotify_daily %>%
+  filter(Artist %in% sample, Position <= 100) %>%
+  group_by(Track.Name) %>%
+  summarise(daily_hits = n()) %>%
+  filter(daily_hits >= 7) %>%
+  arrange(desc(daily_hits))  
+```
+
+# The Question arries, what makes popular music popular? 
+
+There are some characteristics which would have made a song popular in 2017 and which could below into the current year, 2018. If we look at our original dataset, we can see there has been a rise in EDM(Electronic dance music) and Hip-hop. Maybe it's the beats, the dancability of a song, vocals or even instrumentals. Lets see if we can cross-validate the popular dataset to see if we can derive some corelation between them and popular music. 
+
+# High vs Low tempo
+
+Lets plot a density plot to see which tempo appears the most in our top 100 songs from spotify. 
+
+```{r}
+ggplot(spotify) + geom_density(aes(tempo, fill ="tempo")) + labs(title= "Density plot of Tempo", y = "Density", x ="Tempo") 
+```
+
+We can see from this plot that most songs in our dataset are around 100bpm(For reference, Bee Gees' "Stayin' Alive is 100bpm"). This could mean the audience prefers faster beats in music. The lowest cutoff is at 80bpm. 
+
+# Danceability
+
+This decade has marked the biggest rise in dance music. Spotify top 100 consists of many EDM artists like Chainsmokers and Calvin Harris. These songs are focused more on the beats, rytheme and the drop. They are not vocal centric like the popular music for the past. Also there has been there a trend in popular music to be more danceable? Let's see how danceable our top 100 songs are,
+
+Lets plot a density plot to see the density of our danceability variable. At the same time let's come speechiness(which refers to the level of speech in a song) and liveness. 
+```{r}
+correlated_density <- ggplot(spotify) +
+    geom_density(aes(liveness, fill ="liveness", alpha = 0.1)) + 
+    geom_density(aes(speechiness, fill ="speechiness", alpha = 0.1)) + 
+    geom_density(aes(danceability, fill ="danceability", alpha = 0.1)) + 
+    labs(title= "Density plot of Tempo", y = "Density", x ="Tempo")
+
+correlated_density
+```
+This is quite suprising. Songs which have less speech have a higher density than more speech. Following on that popular songs are also not that lively either. This does make sense as music these days is very processed and cleaned, which doesn't have the roughness of real instuments and live music. Furthermore with technology, the recording process has gotten cheaper and we are better more finished products in the market. 
+Also there is a bell curve at higher density for danceability but the overall danceability of the top 100 is quite high. 
+
+Following on my analysis, it is interesting to see that most songs in the top 100 have a typical pattern. They are high on dancebility, short duration and are of typical genres. Lets see if we can run a regression tree on this to see if a song would be popular or not. 
+
+# Decision Tree
+
+Now I will run a decision tree, talking position as the output/predictive value. I have selected some properties out of the lot for my tree. The features I decided on,
+
+1. Danceability
+2. Energy
+3. Loudness
+4. Speechiness
+5. Acousticness
+6. Tempo
+7. Duration (I change it from ms to minutes)
+ 
+Output: Rank of the song on top 100.
+
+You can learn how to use rpart here at, https://cran.r-project.org/web/packages/rpart/index.html
+
+```{r}
+library(rpart)
+library(rpart.plot)
+regression_tree <- spotify %>%
+  select(4,5,7,9,10,14,15,17)
+
+regression_tree$duration_ms <- regression_tree$duration_ms/60000
+
+random_forest <- rpart(rank ~., data = regression_tree)
+rpart.plot(random_forest)
+```
+
+The regression tree came out pretty well. It displays a lot of information about the popular songs of 2017. We can use this model to make predictions of whether a song will be in the top 100s. Using machine learning we can also take a step further and predict higher order in human behaviour. 
+
+Here is a great article on the Medium about using data science to understand Music Cognition: https://medium.com/center-for-data-science/using-data-science-to-understand-music-cognition-fcef00020a5f
+
+# Recommendations
+
+After this tutorial, I would like to leave the reader with some recommendations of my top albums in the year 2017,
+
+1. DAMN by Kendrick Lamar
+2. 4:44 by JAY-Z
+3. Melodrama by Lorde
+4. "Awaken, My Love!" by Childish Gambino
+5. RELAXER by alt-J
+
+
